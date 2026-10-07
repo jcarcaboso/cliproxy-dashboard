@@ -10,51 +10,49 @@ this directory into its own repository whenever you want.
 
 ## Published image
 
-The dashboard is available in the **public** Docker Hub repository
-`skorcius/cliproxy-dashboard`:
+Source: https://github.com/jcarcaboso/cliproxy-dashboard. Releases are
+published to the **public** Docker Hub repository `skorcius/cliproxy-dashboard`.
+Each release's pinned digest, image config digest and build-input hashes are in
+`releases/<version>.json`. Tags are immutable and there is no `latest` tag.
+Releases before 0.1.8 were built from a local module snapshot; 0.1.7 is
+imported here as the first commit, byte-identical to its manifest.
 
-```text
-docker.io/skorcius/cliproxy-dashboard:0.1.7@sha256:9cdec01d75eff50e8b891498d8cc9bc19cd58000ff685f02e2cdfb7dc2aeaf7f
-```
-
-This release targets Linux AMD64. Its tested image/config digests and runtime
-build-input hashes are recorded in [`releases/0.1.7.json`](releases/0.1.7.json).
-The source was a local module snapshot, not a published Git commit. No `latest`
-tag was created; release tags are immutable. Release `0.1.7` deploys the
-user-approved provider-specific layout: Codex has no Fable column, and reset
-details have aligned quantity, expiry date and days-left columns. Claude keeps
-its Fable quota. The layout adapts to narrow screens, and elapsed subscription
-dates use the compact Date passed label. Seven-day sessions, the tab icon and
-prior reset protections remain unchanged. Prior release tags were not overwritten.
+See [docs/RELEASING.md](docs/RELEASING.md) for the release and deployment steps.
 
 No Docker Hub login or pull token is required. To use the published image with
-the standalone Compose file, set
-`DASHBOARD_IMAGE` to the pinned reference above in `.env`, then run:
+the standalone Compose file, set `DASHBOARD_IMAGE` to a pinned reference from
+`releases/` in `.env`, then run:
 
 ```sh
 docker compose pull dashboard
 docker compose up -d --no-build dashboard
 ```
 
-Use `--no-build` with a digest-pinned image; the source-build workflow below
-instead uses the default local image name.
+Use `--no-build` with a digest-pinned image. The source-build workflow below
+uses the default local image name instead.
 
-A manually approved service declaration is maintained in
-the homelab nodes repository under
-`homelab/services/apps-mrb-01_cliproxy-dashboard/`. It reuses the existing proxy
-network and Traefik and uses an anonymously pullable, digest-pinned image.
-The selected instance now has per-account reset controls enabled following
-explicit user approval; standalone installations remain read-only by default. The selected instance is now running at
-`https://cliproxy.mlab.alpetxino.com/usage/`, with the stock management page and
-proxy API preserved. It was bootstrapped as one isolated Compose project;
-normal GitOps adoption remains pending review/publication of the existing
-repository changes. No Jenkins accepted state was fabricated.
+The live instance runs at `https://cliproxy.mlab.alpetxino.com/usage/`. Its
+manually approved service declaration lives in the homelab nodes repository
+under `homelab/services/apps-mrb-01_cliproxy-dashboard/`. That instance has
+per-account reset controls enabled at the user's request. Standalone
+installations are read-only by default.
 
 ## What it does
 
 - Shows all returned credentials, grouped by provider.
 - Reads Codex 5-hour/weekly usage, plan and reset credits.
 - Reads Claude 5-hour/weekly usage, plan, Fable quota and reset grants.
+  Fable is shown only for accounts reporting the Max 20x tier or recorded Fable
+  usage. A zero-utilization window alone is not treated as an entitlement.
+  A Claude table with no Fable account drops the column entirely.
+- When a Claude reset grant is in cooldown or has not started, shows a live
+  countdown to the provider-reported instant it becomes usable. The dashboard
+  re-reads shortly after it passes.
+- Retries a transient provider usage failure once. If the read still fails, it
+  shows the last good reading as stale (resets disabled) with its age. That
+  reading is shared across sessions and dropped after 15 minutes, as soon as one
+  of its windows resets, when the credential identity changes, and after any
+  reset redemption in its scope.
 - Keeps disabled, unsupported and unavailable accounts visible rather than
   inventing usage or silently dropping them.
 - Provides manual refresh and fixed five-minute auto-refresh with Pause/Resume.
@@ -74,7 +72,8 @@ repository changes. No Jenkins accepted state was fabricated.
 
 The user-approved layout shipped in `0.1.7`. Codex omits the Fable column and
 uses the recovered space for aligned reset quantity, expiry date and days-left
-columns. Claude keeps its Fable quota. Unsupported Codex 5-hour reset balances
+columns. In `0.1.8`, Claude shows Fable only for eligible accounts and omits
+the column when none qualify. Unsupported Codex 5-hour reset balances
 are omitted; actual reported balances remain visible. An elapsed subscription
 date reads **Date passed**, without guessing a new date.
 
@@ -85,6 +84,10 @@ review this layout again with synthetic accounts and no management key:
 node test/layout-preview.js
 # http://127.0.0.1:8788/
 ```
+
+The `/no-fable/` fixture has no eligible Fable accounts. The `/countdown/`
+fixture starts a twelve-second reset cooldown and reports eligibility on the
+next read after it expires. Both are read-only and block reset requests.
 
 Set `HOST=0.0.0.0` to serve the sample preview on a reachable LAN/Tailscale
 interface. The fixture makes no proxy/provider connections, disables management
@@ -113,10 +116,10 @@ from its own provider window, not copied from the general weekly percentage.
 
 ## Run with an existing proxy
 
-### Standalone Compose — also works after extracting this directory
+### Standalone Compose
 
 ```sh
-cd dashboard                      # Or the root of the extracted repository.
+cd cliproxy-dashboard
 cp .env.example .env
 # Edit CLIPROXY_BASE_URL and PUBLIC_ORIGIN.
 docker compose up -d --build
@@ -291,23 +294,8 @@ node test/preview.js
 This fixture is excluded from the Docker image. Test records are labeled
 `Fixture / ...`; stop it with Ctrl+C.
 
-The initial module development used only fixtures. Release `0.1.7` is deployed
-on apps-mrb-01. Resets remain enabled at the user's request. HTTPS, assets,
-authentication gates and persistence were verified without a real management
-key or provider reset. All 58 tests pass natively and in the exact release
-container, including provider-specific columns, reported reset-scope visibility,
-aligned expiry-row structure, seven-day expiry boundaries, secure-cookie lifetime,
-sign-out/restart/key-revocation behavior and favicon serving. Fixture browser
-checks covered provider ordering/hiding, aligned renewal metadata, desktop and
-390px layouts, grouped reset expirations, removed subtext, hidden Claude
-renewals, seven-day login text and favicon loading without consuming a reset.
+The initial module development used only fixtures. Each release records its
+test counts in `releases/<version>.json`; the homelab service README records
+what was verified on the live deployment. Fixture checks never consume a reset.
 Actual account data and entitlements must be checked after the operator
 signs in; the pinned contract and fixture tests are not a live-provider guarantee.
-
-## Move into its own repository
-
-Copy this entire directory, including dotfiles and `LICENSE` /
-`THIRD_PARTY_NOTICES.md`. Keep `.env` and runtime data out of Git. `npm test`,
-`Dockerfile`, and `compose.yaml` work from that new root without the Go checkout.
-If already deployed, migrate the operation journal separately and update the
-upstream URL, public origin, reverse-proxy routing and persistent volume.

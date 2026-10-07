@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { harness } from './helpers.js';
+import { harness, KEY } from './helpers.js';
 import { ResetStore } from '../src/reset-store.js';
 
 test('HTTPS sessions use a Secure host-only cookie prefix', async t => {
@@ -67,6 +67,52 @@ test('unrecognized quota data blocks both preparation and an already-open confir
   assert.equal(result.status, 409);
   assert.equal((await h.call('POST', `/api/accounts/${a.id}/reset/prepare`, { kind: 'full' })).status, 409);
   assert.equal(h.upstream.state.mutations.length, 0);
+});
+
+test('last-good usage cannot authorize a new or already-open reset confirmation', async t => {
+  const h = await harness(t); await h.login();
+  const data = (await h.call('GET', '/api/dashboard')).body;
+  const a = data.accounts.find(a => a.provider === 'codex' && a.status === 'ok');
+  const p = await h.call('POST', `/api/accounts/${a.id}/reset/prepare`, { kind: 'full' });
+  h.upstream.state.usageFail.add('auth-codex-one');
+  const confirmed = await h.call('POST', `/api/accounts/${a.id}/reset`, { operationId: p.body.operationId });
+  assert.equal(confirmed.status, 409);
+  assert.equal((await h.call('POST', `/api/accounts/${a.id}/reset/prepare`, { kind: 'full' })).status, 409);
+  assert.equal(h.upstream.state.mutations.length, 0);
+});
+
+test('reset invalidation reaches other sessions, aliases and reads already in flight', async t => {
+  const h = await harness(t);
+  h.upstream.state.duplicateCodex = true;
+  await h.login();
+  const first = (await h.call('GET', '/api/dashboard')).body;
+  const a = first.accounts.find(a => a.provider === 'codex' && a.status === 'ok');
+  const secondLogin = await h.call('POST', '/api/session', { managementKey: KEY }, { headers: { Cookie: '' } });
+  const secondHeaders = { Cookie: secondLogin.headers.get('set-cookie').split(';')[0],
+    'X-CSRF-Token': secondLogin.body.csrfToken };
+  const second = () => h.call('GET', '/api/dashboard', undefined, { headers: secondHeaders });
+  assert.equal((await second()).status, 200);
+  let release, started;
+  h.upstream.state.holdNextUsage = new Promise(resolve => { release = resolve; });
+  const pending = new Promise(resolve => { started = resolve; });
+  h.upstream.state.onUsageStart = started;
+  h.upstream.state.now += 4000;
+  const background = second();
+  await pending;
+  const p = await h.call('POST', `/api/accounts/${a.id}/reset/prepare`, { kind: 'full' });
+  h.upstream.state.onMutation = () => {
+    h.upstream.state.usageFail.add('auth-codex-one');
+    h.upstream.state.usageFail.add('auth-codex-alias');
+  };
+  const result = await h.call('POST', `/api/accounts/${a.id}/reset`, { operationId: p.body.operationId });
+  assert.equal(result.body.outcome, 'accepted');
+  release();
+  for (const response of [await background, await second(), await h.call('GET', '/api/dashboard')]) {
+    const pair = response.body.accounts.filter(row => row.provider === 'codex' && !row.disabled);
+    assert.equal(pair.length, 2);
+    assert.ok(pair.every(row => row.status === 'unavailable' && row.windows.five.remaining === null && !row.resets.enabled));
+  }
+  assert.equal(h.upstream.state.mutations.length, 1);
 });
 
 test('a read already in flight is refreshed after a reset rather than returning old credits', async t => {

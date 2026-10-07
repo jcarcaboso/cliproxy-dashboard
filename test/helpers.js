@@ -22,7 +22,8 @@ export async function mockProxy() {
     codexAccountId: 'account-codex-one', badKey: false, onMutation: null, labelPrefix: '',
     claudeUsed: { five: 100, week: 69, fable: 78 }, fableModern: true,
     subscriptionBody: { active_until: '2026-10-22T12:00:00Z' }, subscriptionFail: false,
-    codexRenewal: {}, claudeProfile: null, providers: null
+    codexRenewal: {}, claudeProfile: null, providers: null,
+    usageFailOnce: new Set(), codexFiveResetMs: 2760000, claudeCooldownUntil: null
   };
   const json = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   const server = http.createServer(async (req, res) => {
@@ -71,6 +72,7 @@ export async function mockProxy() {
       reply(state.subscriptionFail ? 503 : 200, state.subscriptionBody); return;
     }
     if (state.usageFail.has(call.authIndex)) { reply(503, { error: 'UPSTREAM_SECRET_MUST_NOT_LEAK' }); return; }
+    if (state.usageFailOnce.delete(call.authIndex)) { reply(502, { error: 'transient' }); return; }
     if (call.url.endsWith('/wham/usage')) {
       if (state.holdNextUsage) {
         const gate = state.holdNextUsage; state.holdNextUsage = null;
@@ -78,7 +80,7 @@ export async function mockProxy() {
       }
       if (state.emptyUsage) { reply(200, { plan_type: 'pro', rate_limit_reset_credits: { applicable_available_count: state.credits } }); return; }
       reply(200, { plan_type: 'pro', rate_limit: {
-        primary_window: { used_percent: 82, limit_window_seconds: 18000, reset_at: Math.floor((state.now + 2760000) / 1000) },
+        primary_window: { used_percent: 82, limit_window_seconds: 18000, reset_at: Math.floor((state.now + state.codexFiveResetMs) / 1000) },
         secondary_window: { used_percent: 38, limit_window_seconds: 604800, reset_at: Math.floor((state.now + 194400000) / 1000) }
       }, rate_limit_reset_credits: state.usageCreditsOverride ?? { available_count: state.credits, applicable_available_count: state.credits } }); return;
     }
@@ -104,7 +106,7 @@ export async function mockProxy() {
         ...(state.fableModern ? { limits: [{ kind: 'weekly_scoped', scope: { model: { display_name: 'Fable 5' } }, is_active: true, percent: state.claudeUsed.fable, resets_at: new Date(state.now + 136800000).toISOString() }] } : {}),
         cedar_ember: {
           eligible: true, at_limit: true, next_grant_id: 'full_grant',
-          cooldown_until: null, weekly_resets_at: new Date(state.now + 136800000).toISOString(),
+          cooldown_until: state.claudeCooldownUntil, weekly_resets_at: new Date(state.now + 136800000).toISOString(),
           grants: [grant('full_grant', state.fullLeft, ['five_hour', 'seven_day', 'seven_day_overage_included']), grant('five_grant', state.fiveLeft, ['five_hour'])]
         }
       }); return;

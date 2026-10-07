@@ -116,6 +116,11 @@ export function createDashboard(config, { now = Date.now, fetchImpl = fetch, sto
     for (const [key, attempts] of logins) if (attempts.until <= now()) logins.delete(key);
   }
   function publicSnapshot(s) {
+    for (const [id, entry] of s.accounts) {
+      if (['ok', 'stale'].includes(entry.view.status) && entry.usage !== proxy.cachedUsage(entry.item)) {
+        s.accounts.set(id, proxy.staleAccount(entry));
+      }
+    }
     const scopes = new Map();
     for (const entry of s.accounts.values()) if (entry.scopeId) scopes.set(entry.scopeId, (scopes.get(entry.scopeId) || 0) + 1);
     const accounts = [...s.accounts.values()].map(entry => {
@@ -123,7 +128,7 @@ export function createDashboard(config, { now = Date.now, fetchImpl = fetch, sto
       const operation = store.public(store.blocked(entry.view.id, scopeId));
       const resets = {
         ...entry.view.resets, operation,
-        enabled: config.enableResets && !operation && entry.view.status === 'ok',
+        enabled: config.enableResets && !operation && !busyScopes.has(scopeId) && entry.view.status === 'ok',
         ...(entry.view.status !== 'ok' ? { reason: 'Current quota data unavailable; reset disabled' } : {}),
         ...(operation ? { reason: 'Previous reset outcome needs review' } : {}),
         ...(!config.enableResets ? { reason: 'Resets are disabled by server configuration' } : {})
@@ -143,21 +148,14 @@ export function createDashboard(config, { now = Date.now, fetchImpl = fetch, sto
           const items = await proxy.credentials(s.key);
           const rows = await concurrent(items, 4, async item => {
             const previous = s.accounts.get(item.id);
-            const row = await proxy.account(s.key, item, previous?.view);
-            row.scopeId ||= previous?.scopeId || item.id;
-            return row;
+            return proxy.account(s.key, item, previous);
           });
           s.accounts = new Map(rows.map(row => [row.item.id, row]));
           s.observedAt = now(); s.error = null;
         } catch (error) {
           if (error.code === 'management_access_denied') throw error;
           if (!s.accounts.size) throw error;
-          for (const entry of s.accounts.values()) {
-            entry.view.status = entry.view.status === 'disabled' ? 'disabled' : 'stale';
-            entry.view.resets = { full: null, five: null, usable: {}, options: [], reason: 'Proxy unavailable; reset disabled' };
-            entry.view.error = 'Proxy unavailable; showing last known values';
-            entry.resetData = null;
-          }
+          for (const [id, entry] of s.accounts) s.accounts.set(id, proxy.staleAccount(entry));
           s.error = 'proxy_unavailable';
         }
         // A reset may complete while an older multi-account read is still in flight.
@@ -218,7 +216,10 @@ export function createDashboard(config, { now = Date.now, fetchImpl = fetch, sto
       if (account.view.status !== 'ok' || !option || option.count !== op.count || JSON.stringify(option.clears) !== JSON.stringify(op.clears)) fail(409, 'eligibility_changed');
       try { store.begin(op); } catch { fail(503, 'reset_journal_unavailable'); }
       // Once this durable pending record exists, no response loss or restart permits an automatic retry.
+      proxy.invalidateUsage(op.scopeId);
       const outcome = await proxy.redeem(s.key, account, option, op.requestId);
+      // Whatever the outcome, pre-reset readings can no longer stand in for live quota.
+      proxy.invalidateUsage(op.scopeId);
       let receipt;
       try { receipt = store.finish(op.id, outcome); } catch { receipt = store.get(op.id); }
       // Old confirmations for aliases/tabs must not survive a reset against the same scope.
@@ -226,9 +227,9 @@ export function createDashboard(config, { now = Date.now, fetchImpl = fetch, sto
         for (const [id, prepared] of otherSession.prepared) {
           if (prepared.scopeId === op.scopeId) otherSession.prepared.delete(id);
         }
+        otherSession.lastAttempt = 0;
+        otherSession.dirty = true;
       }
-      s.lastAttempt = 0;
-      s.dirty = true;
       // Keep the receipt independent of the subsequent read; a failed refresh must not re-send the mutation.
       return store.public(receipt);
     } finally { busyScopes.delete(op.scopeId); }
