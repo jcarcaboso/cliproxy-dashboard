@@ -8,7 +8,9 @@ const percent = value => typeof value === 'number' && Number.isFinite(value) ? `
 const providerName = provider => names.get(provider) || (provider ? provider[0].toUpperCase() + provider.slice(1) : 'Unknown provider');
 const planName = plan => plan ? plan[0].toUpperCase() + plan.slice(1) : 'Unknown';
 const accountCount = count => `${count} ${count === 1 ? 'account' : 'accounts'}`;
-const quotaKeys = provider => provider === 'claude' ? ['five', 'week', 'fable'] : ['five', 'week'];
+// Fable is a Claude top-tier allowance; the column is hidden when no account in view has it.
+const hasFable = accounts => accounts.some(a => a.provider === 'claude' && a.fableAvailable === true);
+const quotaKeys = (provider, fable = true) => provider === 'claude' && fable ? ['five', 'week', 'fable'] : ['five', 'week'];
 const quotaTone = value => value == null ? 'unknown' : value < 10 ? 'critical' : value < 25 ? 'low' : 'normal';
 const utc = value => value && Number.isFinite(value) ? new Date(value).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Not reported';
 const renewalDate = value => value && Number.isFinite(value)
@@ -24,6 +26,18 @@ function countdown(value) {
   const minutes = Math.ceil(seconds / 60), days = Math.floor(minutes / 1440), hours = Math.floor(minutes % 1440 / 60);
   return days ? `${days}d ${hours}h` : hours ? `${hours}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`;
 }
+const ago = value => {
+  const minutes = Math.max(0, Math.floor((Date.now() - value) / 60000));
+  return minutes < 1 ? 'just now' : minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
+};
+// Provider-reported instant a reset becomes usable, shown only while it is still ahead.
+const resetWait = (account, now = Date.now()) => {
+  const at = account.resets?.availableAt;
+  return account.status === 'ok' && account.resets?.enabled && !account.resets.operation &&
+    !account.resets.usable?.full && !account.resets.usable?.five && Number.isFinite(at) && at > now ? at : null;
+};
+const resetReason = account => account.status !== 'ok' ? 'Current quota data unavailable; reset disabled' :
+  account.resets?.reason || account.resets?.options?.find(o => !o.usable)?.reason || 'No eligible reset reported';
 const messages = {
   management_access_denied: 'Management access was refused. Check the key and the proxy’s remote-management policy.',
   sign_in_required: 'Your session expired. Sign in again.',
@@ -106,6 +120,9 @@ function meter(value) {
   return `<progress class="live-meter" max="100" value="${typeof value === 'number' ? Math.max(0, Math.min(100, value)) : 0}" aria-hidden="true"></progress>`;
 }
 function limit(account, key) {
+  if (key === 'fable' && account.fableAvailable !== true) {
+    return `<div class="limit-cell limit-na unknown" role="cell" data-quota="${account.id}:${key}"><span class="mobile-limit-label">Fable weekly limit</span><span class="metric-label">${account.fableAvailable === false ? 'Not on this plan' : 'Eligibility not reported'}</span></div>`;
+  }
   const value = account.windows?.[key] || { remaining: null, resetAt: null };
   const label = key === 'five' ? '5-hour' : key === 'week' ? 'Weekly' : 'Fable weekly';
   const stale = account.status !== 'ok';
@@ -113,8 +130,8 @@ function limit(account, key) {
     <div class="remaining-line"><span class="metric-label">${value.remaining == null ? 'Unavailable' : stale ? 'Last known' : 'Remaining'}</span><strong class="quota-number">${percent(value.remaining)}</strong></div>${meter(value.remaining)}
     <div class="reset-line"><span>${value.resetAt ? 'Resets in' : 'Not reported'}</span><time data-reset="${value.resetAt || ''}" data-stale="${stale}" data-urgency="${stale ? 'unknown' : timeTone(value.resetAt)}" title="${esc(utc(value.resetAt))}">${countdown(value.resetAt)}</time></div></div>`;
 }
-function summary(group) {
-  const keys = quotaKeys(group.provider);
+function summary(group, fable = group.values.fable?.total > 0) {
+  const keys = quotaKeys(group.provider, fable);
   return `<section class="provider-summary"><header><h2>${esc(providerName(group.provider))}</h2><span>${accountCount(group.total)}</span></header><div class="total-metrics">${keys.map(key => {
     const v = group.values[key], label = key === 'five' ? '5-hour' : key === 'week' ? 'Weekly' : 'Fable weekly';
     return `<div class="total-quota ${quotaTone(v.remaining)}"><span class="metric-label">${label} <span class="metric-coverage">${v.reporting}/${v.total}</span></span><strong>${percent(v.remaining)}</strong>${meter(v.remaining)}</div>`;
@@ -139,23 +156,27 @@ function resetBalance(account, kind) {
       ? `<time data-reset-expiry="${entry.expiresAt}" datetime="${new Date(entry.expiresAt).toISOString()}" data-expired="${entry.expiresAt <= Date.now()}"><span class="reset-expiry-date">${esc(renewalDate(entry.expiresAt))}</span><span class="reset-expiry-days">${expiryDays(entry.expiresAt)}</span></time>`
       : '<span class="reset-expiry-date">Not reported</span><span class="reset-expiry-days">—</span>'}</div>`).join('')}</div>` : ''}</div>`;
 }
-function accountRow(a) {
+function accountRow(a, fable = true) {
   const resets = a.resets || {}, operation = resets.operation;
   const review = operation?.state === 'unknown', pending = operation?.state === 'pending';
-  const usable = resets.enabled && (resets.usable?.full || resets.usable?.five);
-  const reason = resets.reason || resets.options?.find(o => !o.usable)?.reason || 'No eligible reset reported';
+  const usable = a.status === 'ok' && resets.enabled && (resets.usable?.full || resets.usable?.five);
+  const reason = resetReason(a);
   const shortReason = reason.includes('identity') ? 'Identity missing' :
     reason.includes('applicable') ? 'Not eligible now' :
     reason.includes('credits remaining') ? 'No credits' :
     reason.includes('configuration') ? 'Read-only mode' :
     reason.includes('quota data') ? 'Quota unavailable' : 'Why unavailable?';
   const statusLabel = a.status === 'ok' ? '' : `<span class="stale">${esc(a.status)}</span>`;
-  const note = a.error || (a.sharedResetScope ? 'Shares a provider reset scope with another credential.' : a.extraWindows?.length ? 'Another quota period was reported; it is not treated as weekly.' : '');
-  return `<article class="account-grid refined-account" role="row" data-account="${a.id}" data-status="${esc(a.status)}">
+  const wait = !usable && !review && !pending ? resetWait(a) : null;
+  const cachedAge = a.status === 'stale' && a.observedAt ? ` · read ${ago(a.observedAt)}` : '';
+  const note = (a.status === 'stale' ? `${a.error || 'Live quota read failed; showing last known values; reset disabled'}${cachedAge}` : a.error) ||
+    (a.sharedResetScope ? 'Shares a provider reset scope with another credential.' : a.extraWindows?.length ? 'Another quota period was reported; it is not treated as weekly.' : '');
+  return `<article class="account-grid refined-account" role="row" data-account="${a.id}" data-status="${esc(a.status)}" data-fable="${fable}">
     <div class="identity-cell" role="rowheader"><div class="identity-title"><strong class="account-name-truncated" title="${esc(a.label)}">${esc(a.label)}</strong><span class="plan-badge" title="Provider or credential-reported plan">${esc(planName(a.plan))}</span></div><span class="account-id">#${a.id.slice(0, 8)} ${statusLabel}</span>${renewal(a)}${note ? `<p class="account-notice" title="${esc(note)}">${esc(note)}</p>` : ''}</div>
-    ${quotaKeys(a.provider).map(key => limit(a, key)).join('')}
+    ${quotaKeys(a.provider, fable).map(key => limit(a, key)).join('')}
     <div class="resets-cell" role="cell">${resetBalance(a, 'full')}${a.provider === 'codex' && resets.five == null ? '' : resetBalance(a, 'five')}</div>
     <div class="account-action" role="cell"><button class="account-reset ${review ? 'review' : ''}" data-action="${review ? 'review' : 'reset'}" data-account-id="${a.id}" ${pending || (!review && !usable) || resetBusy ? 'disabled' : ''} title="${esc(review ? 'Review uncertain result; this does not repeat the reset' : reason)}" aria-label="${review ? 'Review reset outcome for' : 'Reset'} ${esc(a.label)}">${review ? 'Review' : pending ? 'Pending' : '↻ Reset'}</button>
+    ${wait ? `<span class="reset-wait" title="${esc(`${reason} · usable from ${utc(wait)}`)}"><span>Available in</span><time data-reset="${wait}" data-urgency="${timeTone(wait)}">${countdown(wait)}</time></span>` : ''}
     ${!usable && !review && !pending ? `<button class="reset-reason" data-action="explain" data-account-id="${a.id}" title="${esc(reason)}" aria-label="Why reset is unavailable for ${esc(a.label)}">${esc(shortReason)}</button>` : ''}
     ${a.lastReset ? `<small class="last-operation" title="${esc(utc(a.lastReset.createdAt))}">Last: ${esc(a.lastReset.outcome || a.lastReset.state)}</small>` : ''}</div>
   </article>`;
@@ -169,11 +190,11 @@ function render() {
     return rank(a) - rank(b) || a.localeCompare(b);
   });
   $('summary').innerHTML = providers.map(provider => snapshot.summaries.find(group => group.provider === provider))
-    .filter(Boolean).map(summary).join('');
+    .filter(Boolean).map(group => summary(group, hasFable(accounts))).join('');
   $('accounts-root').innerHTML = providers.map(provider => {
-    const group = accounts.filter(a => a.provider === provider);
+    const group = accounts.filter(a => a.provider === provider), fable = hasFable(group);
     return `<section class="sidebar-provider"><div class="group-heading"><h2>${esc(providerName(provider))}</h2><span>${accountCount(group.length)} · ${group.filter(a => a.status === 'ok').length} reporting</span></div>
-      <div class="provider-table" data-provider="${esc(provider)}" role="table" aria-label="${esc(providerName(provider))} usage"><div class="account-grid table-head" role="row"><div role="columnheader">Account <span>plan</span></div>${quotaKeys(provider).map(key => `<div role="columnheader">${key === 'five' ? '5-hour limit' : key === 'week' ? 'Weekly limit' : 'Fable weekly'}</div>`).join('')}<div role="columnheader">Resets left</div><div class="action-heading" role="columnheader">Action</div></div>${group.map(accountRow).join('')}</div></section>`;
+      <div class="provider-table" data-provider="${esc(provider)}" data-fable="${fable}" role="table" aria-label="${esc(providerName(provider))} usage"><div class="account-grid table-head" role="row"><div role="columnheader">Account <span>plan</span></div>${quotaKeys(provider, fable).map(key => `<div role="columnheader">${key === 'five' ? '5-hour limit' : key === 'week' ? 'Weekly limit' : 'Fable weekly'}</div>`).join('')}<div role="columnheader">Resets left</div><div class="action-heading" role="columnheader">Action</div></div>${group.map(a => accountRow(a, fable)).join('')}</div></section>`;
   }).join('') || '<p class="empty-state">No credentials were returned by CLIProxyAPI. Add accounts in its existing management UI.</p>';
   $('global-error').hidden = !snapshot.error && snapshot.resetsEnabled;
   $('global-error').textContent = snapshot.error ? 'The proxy is unavailable. Last-known values are marked stale; reset actions are disabled.' :
@@ -195,14 +216,23 @@ async function load(afterMutation = false) {
       $('global-error').hidden = false; $('global-error').textContent = errorText(error.message);
       if (snapshot) {
         snapshot.accounts.forEach(a => { a.status = 'stale'; a.resets.enabled = false; });
+        snapshot.summaries.forEach(group => Object.values(group.values).forEach(value => {
+          value.remaining = null; value.reporting = 0;
+        }));
         snapshot.error = 'proxy_unavailable'; render();
       }
     }
   } finally {
     loading = false; $('refresh-now').disabled = false;
-    nextPoll = csrf && !paused ? Date.now() + 300000 : null; tick();
+    nextPoll = csrf && !paused ? pollAt() : null; tick();
     if (refreshAgain && csrf) { refreshAgain = false; await load(); }
   }
+}
+// Re-read shortly after a known reset-availability instant instead of waiting for the next 5-minute poll.
+function pollAt() {
+  const now = Date.now();
+  const waits = (snapshot?.accounts ?? []).map(account => resetWait(account, now - 5000)).filter(Boolean);
+  return Math.min(now + 300000, ...waits.map(at => at + 5000));
 }
 function closeDialog() { if (!resetBusy) $('local-dialog').close(); }
 function dialogBase(account, title) {
@@ -237,13 +267,19 @@ function resultText(receipt) {
 }
 function resetDialog(account) {
   const options = ['full', 'five'].filter(kind => account.resets.usable?.[kind]);
-  if (!account.resets.enabled || !options.length) return;
+  if (account.status !== 'ok' || !account.resets.enabled || !options.length) return;
   const dialog = dialogBase(account, 'Reset this account');
   $('dialog-content').innerHTML = `<p class="reset-scope">Only this account can be targeted. There is no bulk reset.</p><fieldset><legend>Choose scope</legend>${options.map((kind, i) => `<label class="reset-option"><input type="radio" name="kind" value="${kind}" ${i === 0 ? 'checked' : ''}><span><strong>${kind === 'full' ? 'Full / provider reset' : '5-hour only'}</strong><small>Current eligibility will be checked again.</small></span><b>${account.resets[kind] ?? '—'} left</b></label>`).join('')}</fieldset>`;
   let prepared = null;
   dialog.querySelector('form').onsubmit = async event => {
     event.preventDefault();
     if (resetBusy) return;
+    const current = snapshot?.accounts.find(a => a.id === account.id);
+    if (!current || current.status !== 'ok' || !current.resets.enabled) {
+      $('dialog-error').hidden = false;
+      $('dialog-error').textContent = errorText('provider_status_unavailable');
+      return;
+    }
     const generation = epoch;
     lockDialog(true); $('dialog-error').hidden = true;
     const submittingReset = !!prepared;
@@ -298,9 +334,10 @@ function reviewDialog(account) {
 }
 function explainReset(account) {
   const resets = account.resets || {};
-  const reason = resets.reason || resets.options?.find(o => !o.usable)?.reason || 'No eligible reset reported';
+  const reason = resetReason(account);
   const dialog = dialogBase(account, 'Why reset is unavailable');
-  $('dialog-content').innerHTML = `<p class="reset-disclaimer">${esc(reason)}</p><p class="dialog-note">Reported full credits: <strong>${resets.full ?? 'Unknown'}</strong><br>Reported 5-hour credits: <strong>${resets.five ?? 'Unknown'}</strong></p><p class="dialog-note">Refreshing reads current availability; this information view does not perform a reset. The provider decides the result of a confirmed redemption.</p>`;
+  const wait = resetWait(account);
+  $('dialog-content').innerHTML = `<p class="reset-disclaimer">${esc(reason)}</p>${wait ? `<p class="dialog-note">Provider-reported availability at <strong>${esc(utc(wait))}</strong>, in <time data-reset="${wait}">${countdown(wait)}</time>. ${paused ? 'Auto-refresh is paused; refresh manually after this time.' : 'The dashboard re-reads status shortly after.'} Availability still needs provider confirmation.</p>` : ''}<p class="dialog-note">Reported full credits: <strong>${resets.full ?? 'Unknown'}</strong><br>Reported 5-hour credits: <strong>${resets.five ?? 'Unknown'}</strong></p><p class="dialog-note">Refreshing reads current availability; this information view does not perform a reset. The provider decides the result of a confirmed redemption.</p>`;
   $('dialog-submit').hidden = true;
   dialog.querySelector('.dialog-actions [data-close]').textContent = 'Close';
   dialog.querySelector('form').onsubmit = event => event.preventDefault();
@@ -325,7 +362,7 @@ $('refresh-now').onclick = load;
 $('auto-toggle').onclick = () => {
   paused = !paused;
   try { localStorage.setItem('usage-dashboard-paused', String(paused)); } catch { /* Optional preference. */ }
-  nextPoll = csrf && !paused ? Date.now() + 300000 : null; tick();
+  nextPoll = csrf && !paused ? Date.now() : null; tick();
 };
 $('accounts-root').onclick = event => {
   const button = event.target.closest('button[data-account-id]');

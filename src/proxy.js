@@ -1,4 +1,4 @@
-import { credential, record, text, renewalDates, codexWindows, claudeWindows, claudePlan, codexResets, claudeResets, emptyWindows } from './normalize.js';
+import { credential, record, text, renewalDates, codexWindows, claudeWindows, claudePlan, claudeFableAvailable, codexResets, claudeResets, emptyWindows } from './normalize.js';
 import { createHash } from 'node:crypto';
 
 export class ProxyError extends Error {
@@ -15,25 +15,89 @@ const URLS = {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const GRANT = /^[a-z0-9_-]{1,40}$/;
 const unknownResets = () => ({ full: null, five: null, options: [], reason: 'Reset availability not reported' });
+// Last good quota reading per credential, displayed as stale for a bounded time.
+export const USAGE_CACHE_MS = 15 * 60 * 1000;
+const USAGE_RETRY_MS = 750;
+// Provider reads fail intermittently; these failures are worth one more attempt.
+const transientRead = error => error instanceof ProxyError && (
+  ['proxy_unreachable', 'invalid_api_call_response', 'invalid_upstream_response'].includes(error.code) ||
+  (['proxy_request_failed', 'provider_read_failed'].includes(error.code) && (error.upstreamStatus === null || error.upstreamStatus === 0 ||
+    error.upstreamStatus === 408 || error.upstreamStatus === 429 || error.upstreamStatus >= 500 && error.upstreamStatus < 600)));
 
 async function jsonResponse(response) {
   let length = 0;
   const chunks = [];
-  for await (const chunk of response.body ?? []) {
-    length += chunk.length;
-    if (length > 5 * 1024 * 1024) throw new ProxyError('upstream_response_too_large');
-    chunks.push(chunk);
-  }
+  try {
+    for await (const chunk of response.body ?? []) {
+      length += chunk.length;
+      if (length > 5 * 1024 * 1024) throw new ProxyError('upstream_response_too_large');
+      chunks.push(chunk);
+    }
+  } catch (error) { throw error instanceof ProxyError ? error : new ProxyError('proxy_unreachable'); }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new ProxyError('invalid_upstream_response'); }
 }
 
 export class ProxyClient {
-  constructor(baseUrl, { fetchImpl = fetch, now = Date.now } = {}) {
+  constructor(baseUrl, { fetchImpl = fetch, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
     const parsed = new URL(baseUrl);
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error('Invalid CLIPROXY_BASE_URL');
     this.base = parsed.href.replace(/\/$/, '');
     this.fetch = fetchImpl;
     this.now = now;
+    this.sleep = sleep;
+    this.usageCache = new Map();
+    this.usageEpoch = 0;
+  }
+  // A cached reading is accurate only for the same credential identity, for a
+  // bounded age, and until one of its windows resets.
+  cachedUsage(item) {
+    const entry = this.usageCache.get(item.id);
+    if (!entry || entry.fingerprint !== item.fingerprint || item.disabled) return null;
+    const now = this.now();
+    const resetPassed = [...Object.values(entry.windows), ...entry.extraWindows].some(w => w?.resetAt != null && w.resetAt <= now);
+    if (now < entry.observedAt || now - entry.observedAt >= USAGE_CACHE_MS || resetPassed) {
+      this.usageCache.delete(item.id);
+      return null;
+    }
+    return entry;
+  }
+  // Drop readings for credentials no longer returned by the proxy.
+  retainUsage(items) {
+    const active = new Map(items.filter(item => !item.disabled).map(item => [item.id, item]));
+    for (const [id, entry] of this.usageCache) {
+      if (active.get(id)?.fingerprint !== entry.fingerprint) this.invalidateUsage(id);
+    }
+  }
+  // A provider reset changes usage for every credential sharing that scope.
+  invalidateUsage(scopeId) {
+    // Resets are rare; discard overlapping reads rather than refill an invalidated cache.
+    this.usageEpoch += 1;
+    for (const [id, entry] of this.usageCache) if (entry.scopeId === scopeId || id === scopeId) this.usageCache.delete(id);
+  }
+  staleAccount(account) {
+    const { item, view } = account;
+    const entry = this.cachedUsage(item);
+    const cached = !account.scopeId || entry?.scopeId === account.scopeId ? entry : null;
+    const inactive = ['disabled', 'unsupported'].includes(view.status);
+    return {
+      ...account, resetData: null, usage: cached, scopeId: cached?.scopeId || account.scopeId || item.id,
+      view: {
+        ...view, plan: cached?.plan ?? item.plan, observedAt: cached?.observedAt ?? null,
+        windows: cached?.windows ?? emptyWindows(), extraWindows: cached?.extraWindows ?? [],
+        fableAvailable: cached?.fableAvailable, resets: unknownResets(),
+        status: inactive ? view.status : cached ? 'stale' : 'unavailable',
+        error: inactive ? view.error : cached
+          ? 'Live quota read failed; showing cached values; reset disabled'
+          : 'Unable to read provider quota; reset disabled'
+      }
+    };
+  }
+  async readUsage(key, item, url) {
+    try { return await this.readProvider(key, item, url); } catch (error) {
+      if (!transientRead(error)) throw error;
+      await this.sleep(USAGE_RETRY_MS);
+      return this.readProvider(key, item, url);
+    }
   }
   async management(key, path, body) {
     let response;
@@ -44,9 +108,17 @@ export class ProxyClient {
         ...(body === undefined ? {} : { body: JSON.stringify(body) })
       });
     } catch { throw new ProxyError('proxy_unreachable'); }
-    if (response.status === 401 || response.status === 403) { await response.body?.cancel(); throw new ProxyError('management_access_denied', 401); }
+    if (response.status === 401 || response.status === 403) {
+      this.usageCache.clear(); this.usageEpoch += 1;
+      await response.body?.cancel(); throw new ProxyError('management_access_denied', 401);
+    }
     if (response.status === 404) { await response.body?.cancel(); throw new ProxyError('v8_management_unavailable'); }
-    if (!response.ok) { await response.body?.cancel(); throw new ProxyError('proxy_request_failed'); }
+    if (!response.ok) {
+      await response.body?.cancel();
+      const error = new ProxyError('proxy_request_failed');
+      error.upstreamStatus = response.status;
+      throw error;
+    }
     return jsonResponse(response);
   }
   async credentials(key) {
@@ -61,7 +133,7 @@ export class ProxyClient {
         seen.add(item.id); result.push(item);
       }
       if (result.length > 500) throw new ProxyError('too_many_accounts');
-      if (body.has_more !== true) return result;
+      if (body.has_more !== true) { this.retainUsage(result); return result; }
     }
     throw new ProxyError('credential_pagination_limit');
   }
@@ -92,10 +164,17 @@ export class ProxyClient {
   }
   async readProvider(key, item, url, options) {
     const response = await this.provider(key, item, url, options);
-    if (response.status < 200 || response.status >= 300 || !response.body) throw new ProxyError('provider_read_failed');
+    if (response.status < 200 || response.status >= 300 || !response.body) {
+      const error = new ProxyError('provider_read_failed');
+      error.upstreamStatus = response.status >= 200 && response.status < 300 ? null : response.status;
+      throw error;
+    }
     return response.body;
   }
-  async account(key, item, previous) {
+  async account(key, item, previousAccount) {
+    const existing = this.usageCache.get(item.id);
+    if (existing && (existing.fingerprint !== item.fingerprint || item.disabled)) this.invalidateUsage(item.id);
+    const epoch = this.usageEpoch, observedAt = this.now();
     const output = {
       id: item.id, provider: item.provider, label: item.label, plan: item.plan,
       renewal: { ...item.renewal, stale: false },
@@ -105,13 +184,27 @@ export class ProxyClient {
     if (item.disabled) return { view: { ...output, status: 'disabled', error: 'Credential disabled in CLIProxyAPI' }, item, resetData: null };
     if (!['codex', 'claude'].includes(item.provider)) return { view: { ...output, status: 'unsupported', error: 'Quota adapter not available for this provider' }, item, resetData: null };
     const calls = item.provider === 'codex'
-      ? [this.readProvider(key, item, URLS.codexUsage), this.readProvider(key, item, URLS.codexCredits, { credits: true }),
+      ? [this.readUsage(key, item, URLS.codexUsage), this.readProvider(key, item, URLS.codexCredits, { credits: true }),
         item.accountId ? this.readProvider(key, item, `${URLS.codexSubscription}?account_id=${encodeURIComponent(item.accountId)}`) : Promise.resolve(null)]
-      : [this.readProvider(key, item, URLS.claudeUsage), this.readProvider(key, item, URLS.claudeProfile)];
+      : [this.readUsage(key, item, URLS.claudeUsage), this.readProvider(key, item, URLS.claudeProfile)];
     const results = await Promise.allSettled(calls);
     const [usage, secondary, subscription] = results;
     const authFailure = results.find(r => r.status === 'rejected' && r.reason.code === 'management_access_denied');
     if (authFailure) throw authFailure.reason;
+    if (usage.status === 'rejected' && (!transientRead(usage.reason) ||
+        results.some(r => r.status === 'rejected' && [401, 403].includes(r.reason.upstreamStatus)))) {
+      this.invalidateUsage(item.id);
+      return this.staleAccount({ view: output, item });
+    }
+    if (epoch !== this.usageEpoch) return this.staleAccount({ view: output, item, scopeId: existing?.scopeId || item.id });
+    const profile = item.provider === 'claude' && secondary.status === 'fulfilled' ? secondary.value : null;
+    const organization = UUID.test(profile?.organization?.uuid ?? '') ? profile.organization.uuid.toLowerCase() : null;
+    const identity = item.provider === 'codex' ? item.accountId : organization;
+    const cached = this.cachedUsage(item);
+    const scopeId = identity ? createHash('sha256').update(`${item.provider}\0${identity}`).digest('hex').slice(0, 24)
+      : item.provider === 'claude' && secondary.status === 'rejected' ? cached?.scopeId || item.id : item.id;
+    if (cached && cached.scopeId !== scopeId) this.invalidateUsage(item.id);
+    const previous = previousAccount?.item.fingerprint === item.fingerprint && previousAccount.scopeId === scopeId ? previousAccount.view : null;
     const dates = item.provider === 'codex' ? renewalDates(subscription?.value) :
       renewalDates(secondary.value?.organization);
     for (const field of ['nextAt', 'lastAt', 'startedAt']) {
@@ -119,17 +212,13 @@ export class ProxyClient {
     }
     output.renewal.stale = output.renewal.nextAt !== null && dates.nextAt === null && item.renewal?.nextAt == null;
     if (usage.status === 'rejected') {
-      return { view: {
-        ...output,
-        ...(previous ? { windows: previous.windows, extraWindows: previous.extraWindows, plan: previous.plan, observedAt: previous.observedAt } : {}),
-        status: previous?.observedAt ? 'stale' : 'unavailable', error: 'Unable to read provider quota; reset disabled'
-      }, item, resetData: null };
+      return this.staleAccount({ view: output, item, scopeId });
     }
     const body = usage.value;
-    output.status = 'ok'; output.observedAt = this.now();
+    output.status = 'ok'; output.observedAt = observedAt;
     let resetData = null;
     if (item.provider === 'codex') {
-      const { windows, extras } = codexWindows(body, this.now());
+      const { windows, extras } = codexWindows(body, observedAt);
       output.windows = windows; output.extraWindows = extras;
       output.plan = text(body.plan_type ?? body.planType, 60) || item.plan;
       const details = secondary.status === 'fulfilled' ? secondary.value : {};
@@ -146,10 +235,11 @@ export class ProxyClient {
       }
     } else {
       output.windows = claudeWindows(body);
-      const profile = secondary.status === 'fulfilled' ? secondary.value : null;
       output.plan = claudePlan(profile) || item.plan;
+      output.fableAvailable = claudeFableAvailable(profile, output.windows);
+      if (!output.fableAvailable) output.windows.fable = { remaining: null, resetAt: null };
       resetData = claudeResets(body, this.now());
-      resetData.organization = UUID.test(profile?.organization?.uuid ?? '') ? profile.organization.uuid.toLowerCase() : null;
+      resetData.organization = organization;
       resetData.nextGrantId = text(body.cedar_ember?.next_grant_id, 40);
       if (!resetData.organization) resetData.options.forEach(o => { o.usable = false; o.reason = 'Organization identity not reported'; });
     }
@@ -158,18 +248,25 @@ export class ProxyClient {
       output.status = 'unavailable';
       output.error = 'No supported quota percentages were reported';
     }
-    const identity = item.provider === 'codex' ? item.accountId : resetData?.organization;
-    const scopeId = identity ? createHash('sha256').update(`${item.provider}\0${identity}`).digest('hex').slice(0, 24) : item.id;
-    return { view: output, item, resetData, scopeId };
+    let usageEntry = null;
+    if (output.status === 'ok') {
+      usageEntry = {
+        fingerprint: item.fingerprint, scopeId, observedAt: output.observedAt, plan: output.plan,
+        windows: output.windows, extraWindows: output.extraWindows, fableAvailable: output.fableAvailable
+      };
+      this.usageCache.set(item.id, usageEntry);
+      if (!this.cachedUsage(item)) return this.staleAccount({ view: output, item, scopeId });
+    } else this.invalidateUsage(item.id);
+    return { view: output, item, resetData, scopeId, usage: usageEntry };
   }
   publicResets(data) {
     return {
       full: data?.full ?? null, five: data?.five ?? null,
       expirations: data?.expirations ?? { full: [], five: [] },
       usable: { full: data?.options.some(o => o.kind === 'full' && o.usable) ?? false, five: data?.options.some(o => o.kind === 'five' && o.usable) ?? false },
-      reason: data?.reason ?? null,
+      reason: data?.reason ?? null, availableAt: data?.availableAt ?? null,
       // Labels/scopes are display data; the browser never submits a grant ID or organization.
-      options: (data?.options ?? []).map(o => ({ kind: o.kind, label: o.label, count: o.count, usable: o.usable, reason: o.reason, clears: o.clears }))
+      options: (data?.options ?? []).map(o => ({ kind: o.kind, label: o.label, count: o.count, usable: o.usable, reason: o.reason, availableAt: o.availableAt ?? null, clears: o.clears }))
     };
   }
   chooseReset(account, kind) {

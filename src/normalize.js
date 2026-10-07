@@ -67,7 +67,9 @@ export function credential(item) {
     renewal: renewalDates(item, metadata, attrs, ...authClaims),
     label: text(item.label || item.email || item.name || item.id || `${provider} account`),
     disabled: item.disabled === true || item.disabled === 'true' || item.status === 'disabled',
-    fingerprint: createHash('sha256').update(`${provider}\0${authIndex}\0${accountId}`).digest('hex')
+    fingerprint: createHash('sha256').update(JSON.stringify([
+      provider, authIndex, accountId, text(item.id), text(item.email || metadata.email || attrs.email)
+    ])).digest('hex')
   };
 }
 
@@ -109,6 +111,13 @@ export function claudeWindows(body) {
   if (fable) windows.fable = windowValue(fable.percent, fable.resets_at);
   else if (record(body?.iguana_necktie)) windows.fable = windowValue(body.iguana_necktie.utilization, body.iguana_necktie.resets_at);
   return windows;
+}
+
+// Lower tiers can report an unused Fable window without an entitlement.
+export function claudeFableAvailable(profile, windows) {
+  if (/max_20x/i.test(text(profile?.organization?.rate_limit_tier))) return true;
+  const remaining = windows?.fable?.remaining;
+  return typeof remaining === 'number' && remaining < 100;
 }
 
 export function claudePlan(profile) {
@@ -201,14 +210,20 @@ export function claudeResets(body, now) {
       instant(raw.starts_at) > now ? 'Grant has not started' :
       instant(raw.ends_at) !== null && instant(raw.ends_at) <= now ? 'Grant expired' :
       instant(block.cooldown_until) > now ? 'Reset cooldown active' : null;
+    // Only these two reasons end at a provider-reported instant.
+    const availableAt = reason === 'Grant has not started' ? instant(raw.starts_at) :
+      reason === 'Reset cooldown active' ? instant(block.cooldown_until) : null;
     options.push({
       kind, grantId: raw.id, label: text(raw.label) || (kind === 'full' ? 'Full reset' : '5-hour reset'),
-      count: left, usable: reason === null, reason, expiresAt: instant(raw.ends_at),
+      count: left, usable: reason === null, reason, availableAt, expiresAt: instant(raw.ends_at),
       clears: clears.map(key => ({ five_hour: '5-hour window', seven_day: 'Weekly window', seven_day_overage_included: 'Weekly included overage' }[key]))
     });
   }
+  const waits = options.map(o => o.availableAt).filter(value => value !== null);
   return {
     full, five, options,
+    // When nothing is usable now, the earliest reported instant a grant becomes usable.
+    availableAt: !options.some(o => o.usable) && waits.length ? Math.min(...waits) : null,
     expirations: {
       full: resetExpirations(full, options.filter(o => o.kind === 'full')),
       five: resetExpirations(five, options.filter(o => o.kind === 'five'))
@@ -223,8 +238,10 @@ export function averages(accounts) {
     const group = accounts.filter(a => a.provider === provider);
     const values = {};
     for (const key of ['five', 'week', 'fable']) {
-      const known = group.filter(a => a.status === 'ok' && a.windows[key]?.remaining !== null && a.windows[key]?.remaining !== undefined);
-      values[key] = { remaining: known.length ? known.reduce((sum, a) => sum + a.windows[key].remaining, 0) / known.length : null, reporting: known.length, total: group.length };
+      // Accounts without Fable on their plan are not part of its coverage.
+      const members = key === 'fable' ? group.filter(a => a.fableAvailable !== false) : group;
+      const known = members.filter(a => a.status === 'ok' && a.windows[key]?.remaining !== null && a.windows[key]?.remaining !== undefined);
+      values[key] = { remaining: known.length ? known.reduce((sum, a) => sum + a.windows[key].remaining, 0) / known.length : null, reporting: known.length, total: members.length };
     }
     return { provider, total: group.length, values };
   });

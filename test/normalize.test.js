@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { credential, renewalDates, codexWindows, claudeWindows, codexResets, claudeResets, claudePlan, averages } from '../src/normalize.js';
+import { credential, renewalDates, codexWindows, claudeWindows, claudeFableAvailable, codexResets, claudeResets, claudePlan, averages } from '../src/normalize.js';
 import { configuration } from '../src/server.js';
 
 const NOW = Date.parse('2026-10-04T12:00:00Z');
@@ -70,6 +70,40 @@ test('Claude Fable modern scoped window wins; legacy fallback stays supported', 
   delete payload.limits; assert.equal(claudeWindows(payload).fable.remaining, 10);
   assert.equal(claudePlan({ account: { has_claude_pro: false } }), null);
   assert.equal(claudePlan({ account: { has_claude_max: true } }), 'Max');
+});
+
+test('Fable requires the Max 20x tier or recorded nonzero usage, including legacy windows', () => {
+  const modern = { limits: [{ kind: 'weekly_scoped', scope: { model: { display_name: 'Fable 5' } }, is_active: true, percent: 0 }] };
+  const top = { organization: { rate_limit_tier: 'default_claude_max_20x' } };
+  const lower = { organization: { rate_limit_tier: 'default_claude_max_5x' } };
+  for (const payload of [modern, { iguana_necktie: { utilization: 0 } }]) {
+    const windows = claudeWindows(payload);
+    assert.equal(claudeFableAvailable(top, windows), true);
+    assert.equal(claudeFableAvailable(lower, windows), false);
+    assert.equal(claudeFableAvailable(null, windows), false);
+    assert.equal(windows.fable.remaining, 100);
+  }
+  assert.equal(claudeFableAvailable(top, claudeWindows({})), true);
+  assert.equal(claudeFableAvailable(lower, claudeWindows({})), false);
+  modern.limits[0].percent = 20;
+  assert.equal(claudeFableAvailable(lower, claudeWindows(modern)), true);
+  assert.equal(claudeFableAvailable(null, claudeWindows({ iguana_necktie: { utilization: 20 } })), true);
+  modern.limits[0].is_active = false;
+  assert.equal(claudeFableAvailable(lower, claudeWindows(modern)), false);
+  modern.limits[0].is_active = true;
+  modern.limits[0].percent = null;
+  assert.equal(claudeFableAvailable(lower, claudeWindows(modern)), false);
+});
+
+test('credential identity changes invalidate fingerprints while label and token rotation do not', () => {
+  const file = { provider: 'claude', auth_index: 'one', email: 'first@example.test', id: 'first.json' };
+  const first = credential(file);
+  for (const changed of [{ email: 'second@example.test' }, { id: 'replacement.json' }]) {
+    const other = credential({ ...file, ...changed });
+    assert.equal(other.id, first.id);
+    assert.notEqual(other.fingerprint, first.fingerprint);
+  }
+  assert.equal(credential({ ...file, label: 'Renamed', access_token: 'rotated' }).fingerprint, first.fingerprint);
 });
 test('Codex uses the authoritative banked count, not usage-only applicability hints', () => {
   assert.equal(codexResets({ available_count: 2, applicable_available_count: 0 }, NOW).options[0].usable, true);
