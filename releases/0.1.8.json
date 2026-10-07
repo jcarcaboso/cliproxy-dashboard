@@ -1,0 +1,72 @@
+{
+  "version": "0.1.8",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.8",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "7bcf1ba677b5e6db4aa8cf46c4b968e70b8ed4001c012d09799df99ad515c414",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "45a83d2e3928ca9dcd805255a7b3306c297a1d152a5c2de608862f596f634006"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "43e3ceaa983394193b642b56522f736bac2d60f081298cf058b370745503de2b"
+    },
+    {
+      "path": "public/favicon.svg",
+      "sha256": "ddc29522de461f8d6763f892178c728b2bf1656705323f15207b03659207059c"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "507adef55a7aa57de4c113bb06fe65eb2fdd23f53b294717e0381ef08a870f9c"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "592240b2a59e3bfe4393d317f52980a01398ddf4686566ecc1aa90ba83e8ecd2"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "1155c716c36f8acfb48a741a030cefd78735ecd70c0eb91681e23f07d5867375"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "92834888012dabadada60162f7bf14866f2c0ed527fc7d2a42f64d7ce041d43e"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "c1780f633df76474eed0573bce98c6f1945053eec755afda1067c550de8941d7"
+    }
+  ],
+  "createdAt": "2026-10-07T18:44:42.301Z",
+  "change": "Claude reset countdowns, last-good quota cache with reset and identity invalidation, and Fable eligibility",
+  "digest": "sha256:c09048221f7da85fc460a2891ed0bbb2a978e998b285a896f6384c251cd07146",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.8@sha256:c09048221f7da85fc460a2891ed0bbb2a978e998b285a896f6384c251cd07146",
+  "imageConfigDigest": "sha256:de371e4714e8e782f86ae7dfcda151e6d35ec3f3f4b31a248dbb3c70e9df13cb",
+  "sourceStatus": "Git tag v0.1.8 of https://github.com/jcarcaboso/cliproxy-dashboard",
+  "validation": {
+    "nodeTests": 145,
+    "containerTests": 145,
+    "targetArchitecture": "x86_64-linux"
+  }
+}

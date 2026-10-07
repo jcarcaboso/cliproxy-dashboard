@@ -44,7 +44,7 @@ docker build --platform linux/amd64 -t "skorcius/cliproxy-dashboard:$VERSION" .
 
 # The image excludes tests; mount them read-only and run them inside it.
 docker run --rm --platform linux/amd64 --read-only --tmpfs /tmp \
-  -v "$PWD/test:/app/test:ro" "skorcius/cliproxy-dashboard:$VERSION" node --test test/
+  -v "$PWD/test:/app/test:ro" "skorcius/cliproxy-dashboard:$VERSION" node --test test/*.test.js
 
 node scripts/release-manifest.js create "$VERSION" \
   --change "<one-line summary>" --tests <number of passing tests>
