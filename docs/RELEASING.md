@@ -111,7 +111,7 @@ compose=homelab/services/apps-mrb-01_cliproxy-dashboard/compose.yml
 dir="/srv/homelab-services/instances/cliproxy-dashboard/bootstrap/$VERSION-$(sha256sum "$compose" | cut -c1-12)"
 docker_env='sudo -u containers -H env DOCKER_HOST=unix:///run/user/1002/docker.sock'
 
-ssh apps-mrb-01 "sudo install -d -o containers -g containers -m 0750 '$dir'"
+ssh apps-mrb-01 "sudo install -d -o containers -g users -m 0750 '$dir'"
 ssh apps-mrb-01 "sudo -u containers tee '$dir/compose.yml' >/dev/null" < "$compose"
 ssh apps-mrb-01 "$docker_env docker compose --project-name cliproxy-dashboard -f '$dir/compose.yml' pull"
 ssh apps-mrb-01 "$docker_env docker compose --project-name cliproxy-dashboard -f '$dir/compose.yml' up -d"
