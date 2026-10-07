@@ -1,0 +1,69 @@
+{
+  "version": "0.1.0",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.0",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "43ed62b9307b981a32b3f587b24b00dad49030263bf6132175b38c62cb4f73c2",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "218cb1f439f690a9052b3120b574e1e3235320bfafd0faf9010e181e52592977"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "020afb14c0169f85b79e6d57640dd1f4a85de4c9b59dd62f54cfcaf9406cccae"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "1416a770373ad4948e9f98dd942f45c2861ba31b7c57af1336a8c3a265cf274a"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "502553f379d88e39ae90f4bb4583206cf0a48ff220ed3101d1c0fc3bcc5daba7"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "e56ed9485ebf20e38ba2e81d4dd4b6bd24dffb52a61ad8280833ae68201c79dc"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "c18ad10539f675bade79d09ee0a77f83d059ecb98a0d536db27f90c239caf5bf"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "9a4935e17c94f1c9d367c78f55dee3c3ef0cde59ce3304af5db4884c81f06531"
+    }
+  ],
+  "createdAt": "2026-10-04T14:13:18.055417Z",
+  "digest": "sha256:4cb54f3ecedf6744887e143173add44670852fb91ea346b4fb65addedb70909a",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.0@sha256:4cb54f3ecedf6744887e143173add44670852fb91ea346b4fb65addedb70909a",
+  "imageConfigDigest": "sha256:1d21bfae97d63ef45f5c1778ff31704eab044a30bfe16915e2f057c53b71a882",
+  "baseImage": "node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 29,
+    "containerTests": 29,
+    "targetArchitecture": "x86_64-linux"
+  },
+  "visibilityUpdatedAt": "2026-10-04T16:00:31.786108Z"
+}

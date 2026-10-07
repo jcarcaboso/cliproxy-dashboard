@@ -1,0 +1,73 @@
+{
+  "version": "0.1.6",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.6",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "7657731a1e012b2e8bef34f91234e6d6bff4a90b40fd57798e71af33d914902b",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "8b88b24e84cdf1fcba364b7da43b5bb8827345c003b4b011b56cc7ff460c4875"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "4ecf9f85664f0f2bbcc1faf9b252b0df559db0de65c6e002ba97044aa0f9effc"
+    },
+    {
+      "path": "public/favicon.svg",
+      "sha256": "ddc29522de461f8d6763f892178c728b2bf1656705323f15207b03659207059c"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "507adef55a7aa57de4c113bb06fe65eb2fdd23f53b294717e0381ef08a870f9c"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "f73050ac69287a07edc4c7639a47c78e715d64d0b7851d71af42c29183f72c8f"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "3335c4f3680a3f57f8574b4f66825b5921156379e7e86878fb5cf4d82f430d51"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "b9c20336bafc848f321c198aae1dcdc624a32b44de53b11fad970cf5f0a3b118"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "19873355814c0738df31e636c9c3c64aef862260ecf9b1fa347ca05bc8f6b1b9"
+    }
+  ],
+  "createdAt": "2026-10-05T09:59:53.460939+00:00",
+  "change": "Reset-credit/grant expiry dates and remaining days, grouped by reset scope and date; includes renewal and label cleanup from 0.1.5, with seven-day sessions unchanged.",
+  "digest": "sha256:d983b5b297389527c675221b576ba7c43fed63b797a5c42db4a03f0aece38446",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.6@sha256:d983b5b297389527c675221b576ba7c43fed63b797a5c42db4a03f0aece38446",
+  "imageConfigDigest": "sha256:ad474a19971c0e590591fc94ed55d3c8bfd95b39c9fd7ae290d2d7f742794ed4",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 55,
+    "containerTests": 55,
+    "targetArchitecture": "x86_64-linux",
+    "fixtureBrowser": "Removed activation/summary/header clutter; hides undated Claude renewals; grouped reset expiry dates/days and explicit unknowns; desktop, 900px, 800px and 390px, no mutations."
+  }
+}

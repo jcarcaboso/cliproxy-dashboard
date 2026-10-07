@@ -1,0 +1,68 @@
+{
+  "version": "0.1.2",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.2",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "132244d0348362c61681c28db3649282dd14002f1b617a1e6e42690912bc06d7",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "682f0ca55314ee92d9928f140fad384e8aaa420ec6896fbee32037c7124d8913"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "cd21d565f2df557b7a98d28b39d3767dc687881c56a024836f1f28791523d7e9"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "6e4b36bb3c3b1d1e71de3977ee20aec292d2ea532bdf9716f260afce95afb54e"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "e6c75daaed76c65d30aa240c341b1c04b152380837bccd6028bfaddfb99eb0ed"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "c18152f924e3bce0f2178fb53bc2a6da6c792c7ba793eecc65865aad8734c189"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "263a97891d468b9c4aa3c0fb91212722b7c20cabd36e9dd96494a78ae349da84"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "9a4935e17c94f1c9d367c78f55dee3c3ef0cde59ce3304af5db4884c81f06531"
+    }
+  ],
+  "createdAt": "2026-10-04T19:57:13.435171+00:00",
+  "change": "Use authoritative Codex credit totals, optional details, supported identity metadata and native redemption outcomes; display disabled reasons.",
+  "digest": "sha256:8e34e1b5969a5480a2eb3dd6c366704baf7e300f15307bc32ce81e73416873ac",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.2@sha256:8e34e1b5969a5480a2eb3dd6c366704baf7e300f15307bc32ce81e73416873ac",
+  "imageConfigDigest": "sha256:d46980640cf1eb5757c51ca16438835701de1f5b317b2e671c44f0742b76913d",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 35,
+    "containerTests": 35,
+    "targetArchitecture": "x86_64-linux"
+  }
+}

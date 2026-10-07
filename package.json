@@ -1,0 +1,14 @@
+{
+  "name": "cliproxy-usage-dashboard",
+  "version": "0.1.7",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/server.js && node --check src/proxy.js && node --check src/normalize.js && node --check src/reset-store.js && node --check public/app.js"
+  }
+}

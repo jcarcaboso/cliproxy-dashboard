@@ -1,0 +1,74 @@
+{
+  "version": "0.1.5",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.5",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "7e06eebb53fcdaef0a66e8f92d56a8ff57c4febe3c99125353ab2006f5008381",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "5356daeb3338e3f77593884959fc76f5f41dba34fc80fc5c99cf481ac1357091"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "dc5828574eb38d9f58298fa4ca8822ee5dd4bb555d2fb9467a8e09b0d3e5905d"
+    },
+    {
+      "path": "public/favicon.svg",
+      "sha256": "ddc29522de461f8d6763f892178c728b2bf1656705323f15207b03659207059c"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "507adef55a7aa57de4c113bb06fe65eb2fdd23f53b294717e0381ef08a870f9c"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "1ceaeaaadfc55cd9a0324b2ee7c7012bdd1f1fd357f8775385101aea85c9fc85"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "248c9ed87d4fd8247f28dc6de582b44839abd3aedafcdab9e0920a3517943a88"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "b469ea46659af3de73f98a22c01e1cf021e38fc4c4885cecfcea4d60a889cb5f"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "19873355814c0738df31e636c9c3c64aef862260ecf9b1fa347ca05bc8f6b1b9"
+    }
+  ],
+  "createdAt": "2026-10-05T09:46:56.569724+00:00",
+  "change": "Remove activation dates and noisy summary/reset-header notes; hide Claude subscription details without a reported renewal date; show only reported renewal history.",
+  "digest": "sha256:abd1f574753616caf384a068e6e8d0ebe2141c58639ea815885bb2d91abf4468",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.5@sha256:abd1f574753616caf384a068e6e8d0ebe2141c58639ea815885bb2d91abf4468",
+  "imageConfigDigest": "sha256:4088b736918624a1c15a9af4d21767b1c87aac0e36bf0d940c42a3767c648075",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 49,
+    "containerTests": 49,
+    "targetArchitecture": "x86_64-linux",
+    "fixtureBrowser": "Cleaned labels, reported-only renewal history, hidden Claude billing fields without renewal dates; desktop and 390px, no provider mutations."
+  },
+  "deploymentStatus": "Published but never deployed; the reset-expiry follow-up was shipped in 0.1.6 instead."
+}

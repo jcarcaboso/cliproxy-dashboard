@@ -1,0 +1,73 @@
+{
+  "version": "0.1.7",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.7",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "cab1319fce3096c06a6121d7a15a4713ec723b646854289a1ba021aae90b7866",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "aac303d32e06721bd239a4eb87a18c69ef788aea3dcae4d2ded1d622fd342c99"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "1a78fd4d64a0e6e730ddfdcc0fa2842de1ac0eb98c23c7a97bdc8953bce96e7f"
+    },
+    {
+      "path": "public/favicon.svg",
+      "sha256": "ddc29522de461f8d6763f892178c728b2bf1656705323f15207b03659207059c"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "507adef55a7aa57de4c113bb06fe65eb2fdd23f53b294717e0381ef08a870f9c"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "314130efe2e97d824b48208c9e33ef71f777f9e77de2703702e516848c1746ee"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "3335c4f3680a3f57f8574b4f66825b5921156379e7e86878fb5cf4d82f430d51"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "b9c20336bafc848f321c198aae1dcdc624a32b44de53b11fad970cf5f0a3b118"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "19873355814c0738df31e636c9c3c64aef862260ecf9b1fa347ca05bc8f6b1b9"
+    }
+  ],
+  "createdAt": "2026-10-05T11:07:57.247188+00:00",
+  "change": "Approved provider-specific layout: no Codex Fable column, wider aligned reset quantity/expiry/days rows, compact subscription status and responsive cards; existing reset and session protections retained.",
+  "digest": "sha256:9cdec01d75eff50e8b891498d8cc9bc19cd58000ff685f02e2cdfb7dc2aeaf7f",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.7@sha256:9cdec01d75eff50e8b891498d8cc9bc19cd58000ff685f02e2cdfb7dc2aeaf7f",
+  "imageConfigDigest": "sha256:78fcbeb8c6f3186c3741e5bee516c156326bbe425a36dc886485bca30ce0ecbe",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 58,
+    "containerTests": 58,
+    "targetArchitecture": "x86_64-linux",
+    "fixtureBrowser": "User-approved native T3 preview: Codex omits Fable, Claude retains Fable, aligned quantity/date/days reset rows, compact passed-date status; desktop/tablet/390px, no provider mutations."
+  }
+}

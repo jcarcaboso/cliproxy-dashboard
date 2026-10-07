@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0d11"><link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="stylesheet" href="style.css"><title>Proxy usage dashboard</title><script type="module" src="app.js"></script></head>
+<body data-layout="06">
+<section id="sign-in" class="sign-in">
+  <div class="login-card"><div class="brand">Proxy usage</div><h1>Connect to your proxy</h1><p>Use your existing CLIProxyAPI management key. Provider credentials stay in the proxy; this dashboard does not manage them.</p>
+    <noscript><p class="error-text">JavaScript is required to connect securely to the dashboard.</p></noscript>
+    <form id="login-form" method="post"><label for="management-key">Management key</label><input id="management-key" name="managementKey" type="password" required maxlength="2048" autocomplete="current-password"><button id="login-button" type="submit">Connect</button></form>
+    <p id="login-error" class="error-text" role="alert" hidden></p><small>The key is held in server memory for your session, never saved in browser storage. Sessions expire after <span id="session-lifetime">the configured lifetime</span> or a dashboard restart.</small><p id="insecure-warning" class="error-text" hidden>Use HTTPS before sending a real management key across your network.</p>
+  </div>
+</section>
+<div id="dashboard" class="app" hidden>
+  <header class="topbar"><span class="brand"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span>Proxy usage</span><div class="top-links"><span id="connection-state" class="connection-state">Connected</span><button id="sign-out" type="button">Sign out</button></div></header>
+  <div class="heading"><div><h1>Usage dashboard</h1><p id="account-summary">Reading accounts…</p></div></div>
+  <div id="global-error" class="global-error" role="alert" hidden></div>
+  <div class="overview-heading"><h2>Average remaining · by provider</h2><span>Account average, not a shared or plan-weighted pool</span></div>
+  <div class="workspace"><aside id="summary" class="overview" aria-label="Provider overview"></aside><div class="content-area">
+    <div class="toolbar"><div class="toolbar-group"><button id="refresh-now" type="button">↻ Refresh now</button><button id="auto-toggle" type="button" aria-label="Pause automatic refresh"><span aria-hidden="true">Ⅱ</span> Pause</button><span id="refresh-mode">Auto · every 5 minutes</span></div><div class="freshness"><span>Last check <strong id="last-sync">—</strong></span><span>Next <strong id="next-poll">—</strong></span></div></div>
+    <div class="time-legend" aria-label="Reset time color legend"><strong>Reset countdown</strong><span class="soon"><i></i>≤ 1 hour</span><span class="today"><i></i>1–6 hours</span><span class="later"><i></i>&gt; 6 hours</span></div>
+    <main id="accounts-root" class="accounts-root" aria-label="All accounts by provider"><p class="empty-state">Reading account data…</p></main>
+  </div></div>
+  <footer class="footnotes"><p>Only provider-reported data is shown. Unknown and stale readings are excluded from averages. Reset actions consume eligible provider credits or grants for one confirmed account; no bulk reset is available.</p><span>Credentials and settings remain in CLIProxyAPI.</span></footer>
+</div>
+<dialog id="local-dialog" aria-labelledby="dialog-title"></dialog><div id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

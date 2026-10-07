@@ -1,0 +1,68 @@
+{
+  "version": "0.1.1",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.1",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "289bb66f267ef1c7a4c69080fc46e46bc2da27dcbd0d7a3bba8018f461b6a014",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "26d16a5f5d829d9c352d8ca95d9dc3e5afe5c2ba3fe20f733214e1acbb1192e6"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "020afb14c0169f85b79e6d57640dd1f4a85de4c9b59dd62f54cfcaf9406cccae"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "6e4b36bb3c3b1d1e71de3977ee20aec292d2ea532bdf9716f260afce95afb54e"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "502553f379d88e39ae90f4bb4583206cf0a48ff220ed3101d1c0fc3bcc5daba7"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "e56ed9485ebf20e38ba2e81d4dd4b6bd24dffb52a61ad8280833ae68201c79dc"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "c18ad10539f675bade79d09ee0a77f83d059ecb98a0d536db27f90c239caf5bf"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "9a4935e17c94f1c9d367c78f55dee3c3ef0cde59ce3304af5db4884c81f06531"
+    }
+  ],
+  "createdAt": "2026-10-04T17:10:16.976632Z",
+  "change": "Keep management-key form submission out of URL queries when JavaScript is unavailable.",
+  "digest": "sha256:581aaeb5a2a8e8e06b0c7ac86440a32570dd50a8d89aa4cd9734d84839a83ad4",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.1@sha256:581aaeb5a2a8e8e06b0c7ac86440a32570dd50a8d89aa4cd9734d84839a83ad4",
+  "imageConfigDigest": "sha256:aa1bae7d7030017dac401ab33b22ef9eba4f5aa1a51ef7d321a7357244f6079e",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 29,
+    "containerTests": 29,
+    "targetArchitecture": "x86_64-linux"
+  }
+}

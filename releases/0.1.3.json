@@ -1,0 +1,69 @@
+{
+  "version": "0.1.3",
+  "image": "docker.io/skorcius/cliproxy-dashboard:0.1.3",
+  "platform": "linux/amd64",
+  "visibility": "public",
+  "sourceManifestSha256": "1bdf31bfd12ae7097328fe3f5276422c03d13ca3537c92f8753609c5e42a646e",
+  "buildInputs": [
+    {
+      "path": ".dockerignore",
+      "sha256": "1ab7f74fba8e5108af64a06c088953138f43cf24a9893abf9a3b79d03026ef6a"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "14767f4f8ef3a3996c777b7d41381458790163b21f79eab5fb146c556c5f995c"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "879792e89cf1bdd6a8d446033ec87e30496f97dcafc4656dc53f641509b346a6"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "3bf73dd96e192e04d81a578cf19b2df0ed7dfbbff6a76f507a0c9729b88e6844"
+    },
+    {
+      "path": "package.json",
+      "sha256": "b41f7ae850a4a944ce253c0773307c214a4c1f9e660e68dc3d52c89b3b7ad3a8"
+    },
+    {
+      "path": "public/app.js",
+      "sha256": "72fc37cb311d22479c560468fc46f0c09b558dbda8efeffe3c8f7fa423df0048"
+    },
+    {
+      "path": "public/index.html",
+      "sha256": "6e4b36bb3c3b1d1e71de3977ee20aec292d2ea532bdf9716f260afce95afb54e"
+    },
+    {
+      "path": "public/style.css",
+      "sha256": "1ceaeaaadfc55cd9a0324b2ee7c7012bdd1f1fd357f8775385101aea85c9fc85"
+    },
+    {
+      "path": "src/normalize.js",
+      "sha256": "248c9ed87d4fd8247f28dc6de582b44839abd3aedafcdab9e0920a3517943a88"
+    },
+    {
+      "path": "src/proxy.js",
+      "sha256": "b469ea46659af3de73f98a22c01e1cf021e38fc4c4885cecfcea4d60a889cb5f"
+    },
+    {
+      "path": "src/reset-store.js",
+      "sha256": "4435651917b1910345cc6ca2aa813af54d4ce3456649c026a7ef0f03f6b196dd"
+    },
+    {
+      "path": "src/server.js",
+      "sha256": "9a4935e17c94f1c9d367c78f55dee3c3ef0cde59ce3304af5db4884c81f06531"
+    }
+  ],
+  "createdAt": "2026-10-05T08:12:47.238404+00:00",
+  "change": "Codex-first provider averages and compact, read-only account subscription renewal metadata without inferred billing history.",
+  "digest": "sha256:1a81c2c97570bad72ec76d079333674e4fa9101955cc9ecb0a532482ceebb436",
+  "pinnedImage": "docker.io/skorcius/cliproxy-dashboard:0.1.3@sha256:1a81c2c97570bad72ec76d079333674e4fa9101955cc9ecb0a532482ceebb436",
+  "imageConfigDigest": "sha256:a16c2069b8bc228210ada8954395a373458cd00f1abd4fd7e9857d48d673366e",
+  "sourceStatus": "Local module snapshot; not represented by a published Git commit.",
+  "validation": {
+    "nodeTests": 42,
+    "containerTests": 42,
+    "targetArchitecture": "x86_64-linux",
+    "fixtureBrowser": "Codex-first averages, absent-provider hiding, compact renewal metadata, desktop and 390px layouts; no provider mutations."
+  }
+}

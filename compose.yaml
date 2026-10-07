@@ -1,0 +1,26 @@
+services:
+  dashboard:
+    build:
+      context: .
+    image: ${DASHBOARD_IMAGE:-cliproxy-dashboard:local}
+    environment:
+      CLIPROXY_BASE_URL: ${CLIPROXY_BASE_URL:-http://host.docker.internal:8317}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      ENABLE_RESETS: ${ENABLE_RESETS:-false}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+      ALLOW_INSECURE_HTTP: ${ALLOW_INSECURE_HTTP:-false}
+      DATA_DIR: /data
+    ports:
+      - "${DASHBOARD_BIND_HOST:-127.0.0.1}:${DASHBOARD_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - dashboard-state:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  dashboard-state:
